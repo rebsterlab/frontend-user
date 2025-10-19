@@ -32,9 +32,15 @@ export default function Chat({ apiBase }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      const answer =
+  /*    const answer =
         data.response || data.answer || "Non ho trovato informazioni rilevanti.";
+*/
+const answer = data.answer || data.response || "Nessuna informazione trovata.";
+setMessages(prev => [...prev, {role: "assistant", text: answer, sources: data.citations || []}]);
 
+
+
+      
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: answer, sources: data.sources || [] },
@@ -142,7 +148,23 @@ export default function Chat({ apiBase }) {
             >
               <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
 
-              {m.sources && m.sources.length > 0 && (
+
+ {m.sources && m.sources.length>0 && (
+  <div style={{marginTop:8, fontSize:13, color:'#475569'}}>
+    Citazioni:
+    <ul style={{marginTop:6, marginLeft:16}}>
+      {m.sources.map((s,idx)=> (
+        <li key={idx}>
+          <blockquote style={{fontStyle:'italic',color:'#334155'}}>{s.slice(0,180)}...</blockquote>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
+
+  /*            {m.sources && m.sources.length > 0 && (
                 <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
                   Fonti:
                   <ul style={{ marginTop: 6, marginLeft: 16 }}>
@@ -163,6 +185,7 @@ export default function Chat({ apiBase }) {
                   </ul>
                 </div>
               )}
+              */
             </div>
           </motion.div>
         ))}
