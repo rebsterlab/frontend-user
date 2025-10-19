@@ -2,7 +2,7 @@ import React from 'react';
 import Chat from './components/Chat';
 
 export default function App(){
-  const apiBase = process.env.REACT_APP_API || "https://unicardealer-backend.onrender.com";
+  const apiBase = process.env.REACT_APP_API || "https://unicardealer-backend-x6r5.onrender.com";
   return (
     <div style={{minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:32, background:'#f7fafc'}}>
       <header style={{marginBottom:12, textAlign:'center'}}>
