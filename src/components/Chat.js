@@ -1,59 +1,38 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 
 export default function Chat({ apiBase }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const endRef = useRef();
 
-  useEffect(() => {
-    if (endRef.current)
-      endRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  const send = async () => {
-    const q = input.trim();
-    if (!q) return;
-
-    setMessages((prev) => [...prev, { role: "user", text: q }]);
-    setInput("");
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const userMsg = { role: "user", content: input };
+    setMessages((m) => [...m, userMsg]);
     setLoading(true);
+    setInput("");
 
     try {
       const fd = new FormData();
-      fd.append("message", q);
-
-      const res = await fetch(`${apiBase}/chat`, {
-        method: "POST",
-        body: fd,
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+      fd.append("message", input);
+      const res = await fetch(`${apiBase}/chat`, { method: "POST", body: fd });
       const data = await res.json();
-  /*    const answer =
-        data.response || data.answer || "Non ho trovato informazioni rilevanti.";
-*/
-const answer = data.answer || data.response || "Nessuna informazione trovata.";
-setMessages(prev => [...prev, {role: "assistant", text: answer, sources: data.citations || []}]);
-
-
-
-      
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: answer, sources: data.sources || [] },
-      ]);
-    } catch (err) {
-      console.error("Errore in send:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
+      if (data.response) {
+        const botMsg = {
           role: "assistant",
-          text:
-            "Errore di rete: impossibile contattare il server o endpoint non raggiungibile.",
-        },
+          content: data.response,
+          citations: data.citations || [],
+        };
+        setMessages((m) => [...m, botMsg]);
+      } else {
+        throw new Error(data.error || "Errore risposta server");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: "❌ Errore di rete. Riprova più tardi." },
       ]);
     } finally {
       setLoading(false);
@@ -63,166 +42,174 @@ setMessages(prev => [...prev, {role: "assistant", text: answer, sources: data.ci
   return (
     <div
       style={{
-        maxWidth: 720,
+        maxWidth: 700,
         margin: "0 auto",
-        padding: 16,
-        background: "#ffffff",
-        borderRadius: 12,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        padding: "20px 16px",
       }}
     >
-      {/* Header */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
         <div
           style={{
             width: 48,
             height: 48,
+            borderRadius: 999,
             background: "#e0f2fe",
-            borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 24,
+            fontSize: 22,
           }}
         >
           🤖
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>
-            Unicardealer Service Assistant
-          </div>
+          <div style={{ fontWeight: 700 }}>Unicardealer Service Tech Assistant</div>
           <div style={{ fontSize: 13, color: "#64748b" }}>
-            Assistenza tecnica specializzata
+            Risposte tecniche basate su documentazione interna
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Chat area */}
       <div
         style={{
-          height: 420,
+          flex: 1,
           overflowY: "auto",
-          padding: 12,
-          borderRadius: 8,
+          padding: "10px 6px",
           background: "#f8fafc",
+          borderRadius: 10,
           border: "1px solid #e2e8f0",
         }}
       >
-        {messages.length === 0 && (
+        {messages.length === 0 ? (
           <div
             style={{
-              textAlign: "center",
               color: "#94a3b8",
-              marginTop: 80,
+              textAlign: "center",
+              paddingTop: 100,
               fontSize: 15,
             }}
           >
-            Benvenuto — chiedi un codice errore o una procedura.
+            💬 Inizia a scrivere una domanda tecnica...
           </div>
-        )}
-
-        {messages.map((m, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              marginBottom: 12,
-              textAlign: m.role === "user" ? "right" : "left",
-            }}
-          >
-            <div
+        ) : (
+          messages.map((m, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               style={{
-                display: "inline-block",
-                background: m.role === "user" ? "#0ea5e9" : "#fff",
-                color: m.role === "user" ? "#fff" : "#0f172a",
-                padding: "10px 14px",
+                background: m.role === "user" ? "#e0f2fe" : "#fff",
+                color: "#0f172a",
+                padding: "12px 14px",
                 borderRadius: 12,
-                maxWidth: "78%",
-                boxShadow:
-                  m.role === "assistant"
-                    ? "0 1px 4px rgba(0,0,0,0.05)"
-                    : "none",
+                marginBottom: 10,
+                maxWidth: "90%",
+                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
               }}
             >
-              <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: 13,
+                  color: "#0369a1",
+                  marginBottom: 4,
+                }}
+              >
+                {m.role === "user" ? "Tu" : "Assistant"}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 14 }}>{m.content}</div>
 
-
- {m.sources && m.sources.length>0 && (
-  <div style={{marginTop:8, fontSize:13, color:'#475569'}}>
-    Citazioni:
-    <ul style={{marginTop:6, marginLeft:16}}>
-      {m.sources.map((s,idx)=> (
-        <li key={idx}>
-          <blockquote style={{fontStyle:'italic',color:'#334155'}}>{s.slice(0,180)}...</blockquote>
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-
-
-  /*            {m.sources && m.sources.length > 0 && (
-                <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
-                  Fonti:
-                  <ul style={{ marginTop: 6, marginLeft: 16 }}>
-                    {m.sources.map((s, idx) => (
-                      <li key={idx}>
-                        <a
-                          style={{ color: "#0ea5e9" }}
-                          href={
-                            s.download_url || `/download/${s.file}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {s.file}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+              {/* Citazioni */}
+              {m.role === "assistant" && m.citations?.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    background: "#f1f5f9",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>📄 Citazioni</div>
+                  {m.citations.map((c, ci) => (
+                    <div
+                      key={ci}
+                      style={{
+                        marginBottom: 6,
+                        borderLeft: "3px solid #0ea5e9",
+                        paddingLeft: 6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 500, color: "#0369a1" }}>{c.file}</div>
+                      <div
+                        style={{
+                          color: "#334155",
+                          fontSize: 13,
+                          marginTop: 2,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {c.excerpt}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-              */
-            </div>
-          </motion.div>
-        ))}
-
-        {loading && (
-          <div style={{ color: "#64748b", textAlign: "center" }}>Digitando...</div>
+            </motion.div>
+          ))
         )}
-        <div ref={endRef} />
       </div>
 
-      {/* Input bar */}
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      {/* Input area */}
+      <div
+        style={{
+          display: "flex",
+          marginTop: 14,
+          gap: 8,
+          background: "white",
+          borderRadius: 12,
+          border: "1px solid #e2e8f0",
+          padding: 6,
+        }}
+      >
         <input
+          type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") send();
-          }}
-          placeholder="Scrivi la tua domanda..."
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Scrivi una domanda tecnica..."
           style={{
             flex: 1,
-            padding: 12,
-            borderRadius: 10,
-            border: "1px solid #e2e8f0",
+            border: "none",
+            outline: "none",
+            padding: "8px 10px",
             fontSize: 15,
+            borderRadius: 10,
           }}
         />
         <button
-          onClick={send}
+          onClick={sendMessage}
           disabled={loading}
           style={{
-            background: loading ? "#94a3b8" : "#0ea5e9",
-            color: "#fff",
-            padding: "10px 16px",
+            background: "#0ea5e9",
+            color: "white",
             borderRadius: 10,
-            fontWeight: 700,
-            transition: "background 0.2s",
+            fontWeight: 600,
+            padding: "8px 14px",
+            cursor: "pointer",
           }}
         >
           {loading ? "..." : "Invia"}
