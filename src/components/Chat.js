@@ -1,17 +1,20 @@
-import React, { useState } from "react";
+// Chat.js (USer)
+import React, { useState, useRef } from "react";
+import PdfViewer from "./PdfViewer";
 import { motion } from "framer-motion";
 
 export default function Chat({ apiBase }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [viewerState, setViewerState] = useState({ open: false, file: null, page: 1, excerpt: "" });
 
   const sendMessage = async () => {
     if (!input.trim()) return;
     const userMsg = { role: "user", content: input };
     setMessages((m) => [...m, userMsg]);
-    setLoading(true);
     setInput("");
+    setLoading(true);
 
     try {
       const fd = new FormData();
@@ -19,201 +22,72 @@ export default function Chat({ apiBase }) {
       const res = await fetch(`${apiBase}/chat`, { method: "POST", body: fd });
       const data = await res.json();
       if (data.response) {
-        const botMsg = {
-          role: "assistant",
-          content: data.response,
-          citations: data.citations || [],
-        };
+        const botMsg = { role: "assistant", content: data.response, citations: data.citations || [] };
         setMessages((m) => [...m, botMsg]);
       } else {
-        throw new Error(data.error || "Errore risposta server");
+        setMessages((m) => [...m, { role: "assistant", content: "Errore: " + (data.error || "risposta non valida") }]);
       }
     } catch (err) {
-      console.error(err);
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: "❌ Errore di rete. Riprova più tardi." },
-      ]);
+      console.error("Chat error:", err);
+      setMessages((m) => [...m, { role: "assistant", content: "Errore di rete. Riprova più tardi." }]);
     } finally {
       setLoading(false);
     }
   };
 
+  const openCitation = (cit) => {
+    setViewerState({ open: true, file: cit.file, page: cit.page, excerpt: cit.excerpt });
+  };
+
   return (
-    <div
-      style={{
-        maxWidth: 700,
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        padding: "20px 16px",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 20,
-        }}
-      >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 999,
-            background: "#e0f2fe",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
-          }}
-        >
-          🤖
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 16, padding: 16, height: "100vh", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ padding: 12, borderRadius: 10, background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
+          <h2 style={{ margin: 0 }}>Unicardealer Service Assistant</h2>
+          <p style={{ margin: 0, color: "#64748b" }}>Chiedi al tuo assistente tecnico</p>
         </div>
-        <div>
-          <div style={{ fontWeight: 700 }}>Unicardealer Service Tech Assistant</div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>
-            Risposte tecniche basate su documentazione interna
-          </div>
-        </div>
-      </header>
 
-      {/* Chat area */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "10px 6px",
-          background: "#f8fafc",
-          borderRadius: 10,
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        {messages.length === 0 ? (
-          <div
-            style={{
-              color: "#94a3b8",
-              textAlign: "center",
-              paddingTop: 100,
-              fontSize: 15,
-            }}
-          >
-            💬 Inizia a scrivere una domanda tecnica...
-          </div>
-        ) : (
-          messages.map((m, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              style={{
-                background: m.role === "user" ? "#e0f2fe" : "#fff",
-                color: "#0f172a",
-                padding: "12px 14px",
-                borderRadius: 12,
-                marginBottom: 10,
-                maxWidth: "90%",
-                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 600,
-                  fontSize: 13,
-                  color: "#0369a1",
-                  marginBottom: 4,
-                }}
-              >
-                {m.role === "user" ? "Tu" : "Assistant"}
+        <div style={{ flex: 1, overflowY: "auto", padding: 8, borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+          {messages.length === 0 && <div style={{ color: "#94a3b8", textAlign: "center", paddingTop: 40 }}>Inizia la conversazione...</div>}
+          {messages.map((m, i) => (
+            <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: 12, alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%" }}>
+              <div style={{ background: m.role === "user" ? "#e0f2fe" : "#fff", padding: 12, borderRadius: 10 }}>
+                <div style={{ fontWeight: 600, color: m.role === "user" ? "#0369a1" : "#0f172a" }}>{m.role === "user" ? "Tu" : "Assistant"}</div>
+                <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{m.content}</div>
+
+                {m.role === "assistant" && m.citations?.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 13 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Citazioni</div>
+                    <ul style={{ paddingLeft: 18 }}>
+                      {m.citations.map((c, idx) => (
+                        <li key={idx} style={{ marginBottom: 6 }}>
+                          <a href="#" onClick={(e) => { e.preventDefault(); openCitation(c); }} style={{ color: "#0ea5e9" }}>
+                            {c.file} — pagina {c.page}
+                          </a>
+                          <div style={{ color: "#475569", fontSize: 13, marginTop: 4 }}>{c.excerpt}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-              <div style={{ whiteSpace: "pre-wrap", fontSize: 14 }}>{m.content}</div>
-
-              {/* Citazioni */}
-              {m.role === "assistant" && m.citations?.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    background: "#f1f5f9",
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                    fontSize: 13,
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>📄 Citazioni</div>
-                  {m.citations.map((c, ci) => (
-                    <div
-                      key={ci}
-                      style={{
-                        marginBottom: 6,
-                        borderLeft: "3px solid #0ea5e9",
-                        paddingLeft: 6,
-                      }}
-                    >
-                      <div style={{ fontWeight: 500, color: "#0369a1" }}>{c.file}</div>
-                      <div
-                        style={{
-                          color: "#334155",
-                          fontSize: 13,
-                          marginTop: 2,
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        {c.excerpt}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </motion.div>
-          ))
-        )}
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder="Scrivi la tua domanda..." style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+          <button onClick={sendMessage} disabled={loading} style={{ background: "#0ea5e9", color: "#fff", padding: "10px 14px", borderRadius: 10, fontWeight: 700 }}>{loading ? "..." : "Invia"}</button>
+        </div>
       </div>
 
-      {/* Input area */}
-      <div
-        style={{
-          display: "flex",
-          marginTop: 14,
-          gap: 8,
-          background: "white",
-          borderRadius: 12,
-          border: "1px solid #e2e8f0",
-          padding: 6,
-        }}
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Scrivi una domanda tecnica..."
-          style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            padding: "8px 10px",
-            fontSize: 15,
-            borderRadius: 10,
-          }}
+      <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #e2e8f0", background: "#fff" }}>
+        <PdfViewer
+          apiBase={apiBase}
+          file={viewerState.file}
+          page={viewerState.page}
+          excerpt={viewerState.excerpt}
         />
-        <button
-          onClick={sendMessage}
-          disabled={loading}
-          style={{
-            background: "#0ea5e9",
-            color: "white",
-            borderRadius: 10,
-            fontWeight: 600,
-            padding: "8px 14px",
-            cursor: "pointer",
-          }}
-        >
-          {loading ? "..." : "Invia"}
-        </button>
       </div>
     </div>
   );
