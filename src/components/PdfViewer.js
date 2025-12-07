@@ -67,7 +67,6 @@ export default function PdfViewer({ apiBase, file, page = 1, excerpt }) {
           <div style={{ padding: 12 }}>Caricamento…</div>
         )}
       </div>
-
       <div style={{ width: 360, borderLeft: "1px solid #e6eef8", padding: 12, boxSizing: "border-box" }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>Estratto</div>
         <div style={{ fontSize: 13, color: "#334155", whiteSpace: "pre-wrap" }}>{excerpt || "Seleziona una citazione per vedere la porzione di testo."}</div>
